@@ -1,6 +1,7 @@
 import streamlit as st
+from datetime import datetime
+from backend.db_connection import create_review  
 
-# Dil sözlüğü
 lang_dict = {
     'en': {
         "submit_review": "Submit Internship Review",
@@ -44,7 +45,6 @@ lang_dict = {
     }
 }
 
-# Dil kontrolü ve geçiş fonksiyonu
 def switch_language():
     current_lang = st.session_state.get('language', 'en')
     new_lang = 'tr' if current_lang == 'en' else 'en'
@@ -52,7 +52,6 @@ def switch_language():
     st.session_state['language_changed'] = True  # Dil değişti flag'ini ekleyin
 
 def submit_review():
-    # Sayfa tipi kontrolü
     if 'page' not in st.session_state:
         st.session_state['page'] = 'home'  # Varsayılan sayfa
     
@@ -87,40 +86,50 @@ def submit_review():
         
         st.markdown(f"<h1>{text['submit_review']}</h1>", unsafe_allow_html=True)
 
-        # Şirket adı seçimi (çoktan seçmeli)
         company_name = st.selectbox(text["company_name"], ["ABC Corp", "XYZ Ltd", "Tech Solutions", "Innovative Labs", "Global Tech"])
-
-        # Puanlama (1-5 yıldız)
         rating = st.select_slider(text["overall_rating"], options=[1, 2, 3, 4, 5], value=3)
-        
-        # Detaylı değerlendirme metni
         review_text = st.text_area(text["detailed_review"], placeholder="Share your internship experience...")
-
-        # Aylık maaş bilgisi (opsiyonel)
         salary = st.text_input(text["salary"], placeholder="Monthly salary")
-
-        # Departman seçimi (çoktan seçmeli)
         department = st.selectbox(text["department"], ["Computer Engineering", "Industrial Engineering", "Mechanical Engineering"])
-
-        # Staj pozisyonu
         internship_role = st.text_input(text["internship_role"], placeholder="e.g., Software Developer Intern")
-
-        # Proje kalitesi puanı (1-10 arası slider)
         project_quality = st.slider(text["project_quality"], 1, 10)
-
+        
         # Ek Bilgi - seçenekli kutular
         st.write(text["additional_info"])
         transportation = st.checkbox(text["transportation"])
         remote_work = st.checkbox(text["remote_work"])
         meal_allowance = st.checkbox(text["meal_allowance"])
-
+        
         # Kullanılan teknolojiler (metin alanı)
         technologies_used = st.text_input(text["technologies_used"], placeholder="e.g., Python, React, Docker")
 
         # Gönder butonu
         if st.button(text["submit_button"]):
+            # Veritabanına kaydedilecek inceleme verileri
+            review_data = {
+                "company_name": company_name,
+                "review_text": review_text,
+                "rating": rating,
+                "salary_info": salary if salary else text["not_provided"],
+                "department": department,
+                "internship_role": internship_role,
+                "project_rating": project_quality,
+                "transportation_info": text["transportation"] if transportation else text["not_provided"],
+                "remote_work_option": text["remote_work"] if remote_work else text["not_provided"],
+                "meal_card": text["meal_allowance"] if meal_allowance else text["not_provided"],
+                "technologies_used": technologies_used.split(", "),  # Virgülle ayrılmış teknolojiler listesi
+                "feedback_date": datetime.now().strftime("%d/%m/%Y"),
+                "like_count": 0  # Varsayılan beğeni sayısı 0
+            }
+
+            # Veriyi veritabanına ekleme
+            review_id = create_review(review_data)
+            if review_id:
+                st.success(text["success_message"])
+            else:
+                st.error("There was an error saving your review. Please try again.")
+            
             # Form bilgilerini ekranda gösteriyoruz
-            st.success(text["success_message"])
             st.write(text["company_name"] + ":", company_name)
             st.write(text["overall_rating"] + ":", text["rating_stars"] * rating)
             st.write(text["detailed_review"] + ":", review_text)
